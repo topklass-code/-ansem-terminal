@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>$ANSEM — The Black Bull Terminal</title>
+<meta name="author" content="Topklass">
+<link rel="icon" href="data:,">
+
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/prop-types/prop-types.min.js" crossorigin></script>
+<script src="https://unpkg.com/recharts@2.15.1/umd/Recharts.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone@7/babel.min.js" crossorigin></script>
+<script>
+  window.addEventListener("error", function (e) {
+    var root = document.getElementById("root");
+    if (root && !root.dataset.rendered) {
+      root.innerHTML =
+        '<div style="color:#F2F0EB;font-family:monospace;padding:40px;max-width:600px;margin:0 auto;line-height:1.6;">' +
+        '<h2 style="color:#C41E3A;">Terminal failed to load</h2>' +
+        '<p>A required script did not load: <b>' + (e.message || "unknown error") + '</b></p>' +
+        '<p style="color:#9A9499;font-size:13px;">This is usually a CDN hiccup. Try refreshing. If it persists, one of the CDN scripts in the &lt;head&gt; may be blocked or renamed.</p>' +
+        "</div>";
+    }
+  });
+</script>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+  html, body { margin: 0; padding: 0; }
+  #root { min-height: 100vh; }
+
+  .ansem-root {
+    --bg: #0A0A0C;
+    --surface: #131215;
+    --surface-2: #19171B;
+    --line: #2A2226;
+    --crimson: #C41E3A;
+    --crimson-dim: #7A1428;
+    --gold: #D4A73D;
+    --text: #F2F0EB;
+    --text-dim: #9A9499;
+    --text-faint: #635E63;
+    --green: #3FBF6F;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    min-height: 100vh;
+    padding-bottom: 60px;
+  }
+  .ansem-root * { box-sizing: border-box; }
+
+  .ticker-wrap {
+    background: var(--crimson);
+    overflow: hidden;
+    white-space: nowrap;
+    border-bottom: 1px solid #8B1530;
+  }
+  .ticker-track {
+    display: inline-flex;
+    animation: scroll-left 32s linear infinite;
+    padding: 6px 0;
+  }
+  .ticker-item {
+    color: #FCEFE9;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+    padding: 0 18px;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    white-space: nowrap;
+  }
+  .ticker-dot { color: #F0B8A9; font-size: 8px; }
+  @keyframes scroll-left {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+
+  .header {
+    padding: 28px 32px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .brand-row { display: flex; align-items: center; gap: 14px; }
+  .bull-mark {
+    width: 40px; height: 40px;
+    border: 1.5px solid var(--gold);
+    border-radius: 2px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    color: var(--gold);
+    flex-shrink: 0;
+  }
+  .brand-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 34px;
+    letter-spacing: 0.03em;
+    line-height: 1;
+    color: var(--text);
+  }
+  .brand-sub {
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+  .badge-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+  .live-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .live-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--green);
+    animation: blink 1.6s ease-in-out infinite;
+  }
+  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.25; } }
+  .live-dot.err { background: var(--crimson); animation: none; }
+  .badge-tag {
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    padding: 3px 8px;
+    border-radius: 3px;
+  }
+  .badge-tag.live { color: #8FE0AC; border: 1px solid #2A4A34; background: rgba(63,191,111,0.08); }
+  .badge-tag.mock { color: var(--text-faint); border: 1px dashed var(--line); }
+
+  .horn-divider { padding: 20px 32px 0; }
+
+  .hero {
+    padding: 20px 32px 4px;
+    display: flex;
+    gap: 40px;
+    flex-wrap: wrap;
+    align-items: baseline;
+  }
+  .hero-price {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 64px;
+    line-height: 1;
+    letter-spacing: 0.01em;
+  }
+  .hero-change {
+    display: flex; align-items: center; gap: 4px;
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .hero-change.pos { color: var(--green); }
+  .hero-change.neg { color: var(--crimson); }
+  .hero-meta { display: flex; gap: 28px; flex-wrap: wrap; }
+  .hero-meta-item .hm-label {
+    font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--text-faint); margin-bottom: 3px;
+  }
+  .hero-meta-item .hm-value { font-size: 16px; color: var(--text); font-weight: 600; }
+  .last-updated {
+    font-size: 10px; color: var(--text-faint); padding: 6px 32px 0;
+  }
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--line);
+    margin: 24px 32px 0;
+    border: 1px solid var(--line);
+  }
+  .stat-card { background: var(--surface); padding: 16px 18px; }
+  .stat-top { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .stat-label { font-size: 10px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-dim); }
+  .stat-value { font-size: 22px; font-weight: 700; color: var(--text); }
+  .stat-sub { display: flex; align-items: center; gap: 3px; font-size: 11px; margin-top: 6px; }
+  .stat-sub.pos { color: var(--green); }
+  .stat-sub.neg { color: var(--crimson); }
+
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 20px;
+    margin: 20px 32px 0;
+  }
+  .grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 20px;
+    margin: 20px 32px 0;
+  }
+  @media (max-width: 900px) {
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .stat-grid { grid-template-columns: repeat(2, 1fr); }
+    .hero-price { font-size: 44px; }
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    padding: 18px 20px 20px;
+  }
+  .panel-head {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 14px;
+  }
+  .eyebrow-row { display: flex; align-items: center; gap: 8px; }
+  .eyebrow {
+    font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--gold); margin-bottom: 3px;
+  }
+  .panel-title { font-size: 15px; font-weight: 600; color: var(--text); }
+
+  .chart-tooltip {
+    background: #0E0D0F; border: 1px solid var(--line);
+    padding: 8px 10px; font-size: 11px; border-radius: 3px;
+  }
+  .ct-label { color: var(--text-faint); margin-bottom: 4px; }
+  .ct-row { font-weight: 600; }
+
+  .legend-row { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-dim); }
+  .legend-dot { width: 8px; height: 8px; border-radius: 2px; }
+
+  .band-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 9px 0; border-bottom: 1px solid var(--line);
+  }
+  .band-row:last-child { border-bottom: none; }
+  .band-name { font-size: 12px; color: var(--text); }
+  .band-bar-wrap { flex: 1; margin: 0 14px; height: 5px; background: var(--surface-2); border-radius: 2px; overflow: hidden; }
+  .band-bar { height: 100%; border-radius: 2px; }
+  .band-pct { font-size: 12px; font-weight: 700; width: 40px; text-align: right; }
+
+  .whale-row {
+    display: grid;
+    grid-template-columns: 100px 1fr auto;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--line);
+    align-items: center;
+  }
+  .whale-row:last-child { border-bottom: none; }
+  .whale-wallet { font-size: 11px; color: var(--gold); }
+  .whale-action { font-size: 11px; color: var(--text-dim); }
+  .whale-amount { font-size: 12px; font-weight: 600; }
+  .whale-amount.buy { color: var(--green); }
+  .whale-amount.sell { color: var(--crimson); }
+  .whale-time { font-size: 10px; color: var(--text-faint); display: block; margin-top: 2px; }
+
+  .social-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  .social-card { background: var(--surface-2); border: 1px solid var(--line); padding: 12px 14px; }
+  .social-platform { font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); }
+  .social-metric { font-size: 11px; color: var(--text-dim); margin: 4px 0 6px; }
+  .social-value { font-size: 18px; font-weight: 700; }
+  .social-change { font-size: 11px; color: var(--green); }
+
+  .footer-note {
+    margin: 32px 32px 0;
+    padding: 14px 18px;
+    border: 1px dashed var(--line);
+    font-size: 11px;
+    color: var(--text-faint);
+    display: flex; align-items: flex-start; gap: 8px;
+    line-height: 1.5;
+  }
+  .footer-note b { color: var(--text-dim); }
+
+  .built-by {
+    margin: 14px 32px 0;
+    padding-bottom: 24px;
+    font-size: 11px;
+    color: var(--text-faint);
+    text-align: center;
+    letter-spacing: 0.04em;
+  }
+  .built-by b { color: var(--gold); }
+
+  .pair-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .pair-table th { text-align: left; color: var(--text-faint); font-weight: 500; padding: 6px 8px; border-bottom: 1px solid var(--line); text-transform: uppercase; letter-spacing: 0.05em; font-size: 9px; }
+  .pair-table td { padding: 8px; border-bottom: 1px solid var(--line); color: var(--text); }
+  .pair-table tr:last-child td { border-bottom: none; }
+  .dex-name { text-transform: capitalize; color: var(--gold); }
+
+  .empty-state { color: var(--text-faint); font-size: 11px; padding: 20px 0; text-align: center; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useRef } = React;
+const {
+  AreaChart, Area, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
+} = Recharts;
+
+// ---------- config ----------
+const TOKEN_ADDRESS = "9cRCn9rGT8V2imeM2BaKs13yhMEais3ruM3rPvTGpump"; // $ANSEM / The Black Bull, verify against blackbullsol.com before trusting
+const DEXSCREENER_URL = `https://api.dexscreener.com/latest/dex/tokens/${TOKEN_ADDRESS}`;
+const POLL_MS = 45000;
+const MAX_HISTORY_POINTS = 40;
+
+const DEX_COLORS = {
+  meteora: "#C41E3A",
+  pumpswap: "#D4A73D",
+  mexc: "#7A1428",
+  raydium: "#4A4A50",
+  orca: "#8A5CF6",
+  jupiter: "#3FA1BF",
+};
+const FALLBACK_COLORS = ["#C41E3A", "#D4A73D", "#7A1428", "#4A4A50", "#8A5CF6", "#3FA1BF"];
+
+// ---------- tiny inline icon set (no external icon library needed) ----------
+const Icon = ({ path, size = 15, color = "currentColor", strokeWidth = 1.75 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+    {path}
+  </svg>
+);
+const TrendingUp = (p) => <Icon {...p} path={<><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></>} />;
+const TrendingDown = (p) => <Icon {...p} path={<><polyline points="23 18 13.5 8.5 8.5 13.5 1 6" /><polyline points="17 18 23 18 23 12" /></>} />;
+const Droplets = (p) => <Icon {...p} path={<path d="M12 2.69s-5.5 6.4-5.5 10.31a5.5 5.5 0 0 0 11 0c0-3.91-5.5-10.31-5.5-10.31z" />} />;
+const Activity = (p) => <Icon {...p} path={<polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />} />;
+const Users = (p) => <Icon {...p} path={<><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></>} />;
+const Flame = (p) => <Icon {...p} path={<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />} />;
+const Target = (p) => <Icon {...p} path={<><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></>} />;
+const ArrowUpRight = (p) => <Icon {...p} path={<><line x1="7" y1="17" x2="17" y2="7" /><polyline points="7 7 17 7 17 17" /></>} />;
+const ArrowDownRight = (p) => <Icon {...p} path={<><line x1="7" y1="7" x2="17" y2="17" /><polyline points="17 7 17 17 7 17" /></>} />;
+
+// ---------- mock generator, used only for the Community section ----------
+function seededRandom(seed) {
+  let s = seed;
+  return () => {
+    s = (s * 9301 + 49297) % 233280;
+    return s / 233280;
+  };
+}
+const rand = seededRandom(1337);
+
+const holderBands = [
+  { band: "Top 1-10", pct: 34, risk: "high" },
+  { band: "Top 11-50", pct: 19, risk: "med" },
+  { band: "Top 51-200", pct: 16, risk: "low" },
+  { band: "Rest", pct: 31, risk: "low" },
+];
+
+const whaleWatch = [
+  { wallet: "8fK...m2Qz", action: "Accumulating", amount: "+412,000 ANSEM", value: "$100,320", time: "12m ago", dir: "buy" },
+  { wallet: "3nR...v7Lp", action: "Distributing", amount: "-186,500 ANSEM", value: "$45,420", time: "31m ago", dir: "sell" },
+  { wallet: "Ansem.sol", action: "Creator fee airdrop", amount: "+2,100,000 ANSEM", value: "$511,350", time: "1h ago", dir: "buy" },
+  { wallet: "9pQ...j4Xc", action: "New position", amount: "+98,200 ANSEM", value: "$23,912", time: "2h ago", dir: "buy" },
+];
+
+const socialFeed = [
+  { platform: "X", metric: "Mentions (24h)", value: "19,750", change: "+22%" },
+  { platform: "X", metric: "Bullish sentiment", value: "45.8%", change: "+4.1%" },
+  { platform: "Telegram", metric: "Active members", value: "8,412", change: "+310" },
+  { platform: "Discord", metric: "Online now", value: "2,190", change: "+6%" },
+];
+
+const fmt = (n) => {
+  if (n == null || isNaN(n)) return "—";
+  if (Math.abs(n) >= 1000000) return `$${(n / 1000000).toFixed(2)}M`;
+  if (Math.abs(n) >= 1000) return `$${(n / 1000).toFixed(1)}K`;
+  return `$${n.toFixed(2)}`;
+};
+const fmtNum = (n) => (n == null || isNaN(n)) ? "—" : n.toLocaleString("en-US");
+const nowLabel = () => {
+  const d = new Date();
+  return d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+};
+
+function HornDivider() {
+  return (
+    <div className="horn-divider" aria-hidden="true">
+      <svg width="100%" height="14" viewBox="0 0 400 14" preserveAspectRatio="none">
+        <path d="M0,7 L170,7 L185,1 L195,13 L205,1 L215,7 L400,7" stroke="#3a1015" strokeWidth="1" fill="none" />
+      </svg>
+    </div>
+  );
+}
+
+function TickerTape({ items }) {
+  return (
+    <div className="ticker-wrap">
+      <div className="ticker-track">
+        {[...items, ...items].map((it, i) => (
+          <span className="ticker-item" key={i}>{it}<span className="ticker-dot">◆</span></span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function StatCard({ icon: IconComp, label, value, sub, positive }) {
+  return (
+    <div className="stat-card">
+      <div className="stat-top">
+        <IconComp size={15} strokeWidth={1.75} color="#D4A73D" />
+        <span className="stat-label">{label}</span>
+      </div>
+      <div className="stat-value">{value}</div>
+      {sub && (
+        <div className={`stat-sub ${positive ? "pos" : "neg"}`}>
+          {positive ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+          {sub}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Panel({ title, eyebrow, tag, right, children }) {
+  return (
+    <div className="panel">
+      <div className="panel-head">
+        <div>
+          <div className="eyebrow-row">
+            <div className="eyebrow">{eyebrow}</div>
+            {tag === "live" && <span className="badge-tag live">LIVE</span>}
+            {tag === "mock" && <span className="badge-tag mock">MOCK</span>}
+          </div>
+          <div className="panel-title">{title}</div>
+        </div>
+        {right}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+const CustomTooltip = ({ active, payload, label, unit }) => {
+  if (!active || !payload || !payload.length) return null;
+  return (
+    <div className="chart-tooltip">
+      <div className="ct-label">{label}</div>
+      {payload.map((p, i) => (
+        <div key={i} className="ct-row" style={{ color: p.color || p.fill }}>
+          {p.name || p.dataKey}: {typeof p.value === "number" ? (unit === "$" ? fmt(p.value) : fmtNum(p.value)) : p.value}
+        </div>
+      ))}
+    </div>
+  );
+};
+
+function AnsemDashboard() {
+  const [pairs, setPairs] = useState([]);
+  const [status, setStatus] = useState("loading"); // loading | ok | error
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [liqHistory, setLiqHistory] = useState([]);
+  const [volHistory, setVolHistory] = useState([]);
+  const [priceHistory, setPriceHistory] = useState([]);
+  const pollRef = useRef(null);
+
+  async function poll() {
+    try {
+      const res = await fetch(DEXSCREENER_URL);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const solPairs = (data.pairs || []).filter((p) => p.chainId === "solana");
+      if (!solPairs.length) throw new Error("No pairs returned");
+
+      setPairs(solPairs);
+      setStatus("ok");
+      setLastUpdated(new Date());
+
+      const totalLiq = solPairs.reduce((a, p) => a + (p.liquidity && p.liquidity.usd ? p.liquidity.usd : 0), 0);
+      const totalVol = solPairs.reduce((a, p) => a + (p.volume && p.volume.h24 ? p.volume.h24 : 0), 0);
+      const main = [...solPairs].sort((a, b) => (b.liquidity?.usd || 0) - (a.liquidity?.usd || 0))[0];
+      const price = main ? parseFloat(main.priceUsd) : null;
+      const tLabel = nowLabel();
+
+      setLiqHistory((h) => [...h, { t: tLabel, liquidity: totalLiq }].slice(-MAX_HISTORY_POINTS));
+      setVolHistory((h) => [...h, { t: tLabel, volume: totalVol }].slice(-MAX_HISTORY_POINTS));
+      setPriceHistory((h) => [...h, { t: tLabel, price }].slice(-MAX_HISTORY_POINTS));
+    } catch (e) {
+      setStatus("error");
+    }
+  }
+
+  useEffect(() => {
+    poll();
+    pollRef.current = setInterval(poll, POLL_MS);
+    return () => clearInterval(pollRef.current);
+  }, []);
+
+  const mainPair = pairs.length ? [...pairs].sort((a, b) => (b.liquidity?.usd || 0) - (a.liquidity?.usd || 0))[0] : null;
+  const price = mainPair ? parseFloat(mainPair.priceUsd) : null;
+  const priceChange24h = mainPair?.priceChange?.h24 ?? null;
+  const marketCap = mainPair?.marketCap ?? null;
+  const fdv = mainPair?.fdv ?? null;
+  const totalLiquidity = pairs.reduce((a, p) => a + (p.liquidity?.usd || 0), 0);
+  const totalVolume24h = pairs.reduce((a, p) => a + (p.volume?.h24 || 0), 0);
+
+  const lpByDex = pairs
+    .map((p, i) => ({
+      name: p.dexId,
+      value: p.liquidity?.usd || 0,
+      color: DEX_COLORS[p.dexId?.toLowerCase()] || FALLBACK_COLORS[i % FALLBACK_COLORS.length],
+    }))
+    .filter((d) => d.value > 0)
+    .sort((a, b) => b.value - a.value);
+
+  const txWindows = ["m5", "h1", "h6", "h24"];
+  const txData = txWindows.map((w) => {
+    const buys = pairs.reduce((a, p) => a + (p.txns?.[w]?.buys || 0), 0);
+    const sells = pairs.reduce((a, p) => a + (p.txns?.[w]?.sells || 0), 0);
+    return { window: w, buys, sells };
+  });
+  const buys24h = txData.find((d) => d.window === "h24")?.buys || 0;
+  const sells24h = txData.find((d) => d.window === "h24")?.sells || 0;
+  const buySellRatio = sells24h > 0 ? (buys24h / sells24h).toFixed(2) : "—";
+
+  const tickerItems = mainPair
+    ? [
+        `$ANSEM $${price?.toFixed(6)} ${priceChange24h >= 0 ? "▲" : "▼"}${priceChange24h?.toFixed(2)}%`,
+        `24H VOL ${fmt(totalVolume24h)}`,
+        `LIQUIDITY ${fmt(totalLiquidity)}`,
+        `MCAP ${fmt(marketCap)}`,
+        `FDV ${fmt(fdv)}`,
+        `TOP DEX ${lpByDex[0]?.name?.toUpperCase() || "—"}`,
+        `POOLS TRACKED ${pairs.length}`,
+      ]
+    : ["LOADING LIVE $ANSEM DATA..."];
+
+  return (
+    <div className="ansem-root">
+      <TickerTape items={tickerItems} />
+
+      <div className="header">
+        <div className="brand-row">
+          <div className="bull-mark">A</div>
+          <div>
+            <div className="brand-title">$ANSEM — THE BLACK BULL</div>
+            <div className="brand-sub">Solana · LP / Volume / Community Terminal</div>
+          </div>
+        </div>
+        <div className="badge-row">
+          <span className="live-pill">
+            <span className={`live-dot ${status === "error" ? "err" : ""}`} />
+            {status === "loading" ? "Connecting…" : status === "ok" ? "Live · DexScreener" : "Feed unavailable"}
+          </span>
+        </div>
+      </div>
+
+      {lastUpdated && (
+        <div className="last-updated">
+          Last updated {lastUpdated.toLocaleTimeString()} · refreshes every {POLL_MS / 1000}s · contract {TOKEN_ADDRESS.slice(0, 6)}…{TOKEN_ADDRESS.slice(-4)}
+        </div>
+      )}
+
+      <HornDivider />
+
+      <div className="hero">
+        <div>
+          <div className="hero-price">{price != null ? `$${price.toFixed(price < 1 ? 6 : 4)}` : "—"}</div>
+          {priceChange24h != null && (
+            <div className={`hero-change ${priceChange24h >= 0 ? "pos" : "neg"}`}>
+              {priceChange24h >= 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
+              {priceChange24h.toFixed(2)}% · 24h
+            </div>
+          )}
+        </div>
+        <div className="hero-meta">
+          <div className="hero-meta-item">
+            <div className="hm-label">Market Cap</div>
+            <div className="hm-value">{fmt(marketCap)}</div>
+          </div>
+          <div className="hero-meta-item">
+            <div className="hm-label">FDV</div>
+            <div className="hm-value">{fmt(fdv)}</div>
+          </div>
+          <div className="hero-meta-item">
+            <div className="hm-label">Pools Tracked</div>
+            <div className="hm-value">{pairs.length || "—"}</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="stat-grid">
+        <StatCard icon={Droplets} label="Total Liquidity" value={fmt(totalLiquidity)} sub="Live across all pools" positive />
+        <StatCard icon={Activity} label="24h Volume" value={fmt(totalVolume24h)} sub="Live across all pools" positive />
+        <StatCard icon={Flame} label="Buy / Sell Ratio (24h)" value={buySellRatio} sub={`${fmtNum(buys24h)} buys / ${fmtNum(sells24h)} sells`} positive={buys24h >= sells24h} />
+        <StatCard icon={Users} label="Holders" value="—" sub="Not available via this feed" positive />
+      </div>
+
+      <div className="grid-2">
+        <Panel eyebrow="Volume Analysis" tag="live" title="Buy vs. Sell Transactions">
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={txData} barGap={0} barCategoryGap={2}>
+              <CartesianGrid stroke="#2A2226" vertical={false} />
+              <XAxis dataKey="window" tick={{ fill: "#635E63", fontSize: 10 }} axisLine={{ stroke: "#2A2226" }} tickLine={false} />
+              <YAxis tick={{ fill: "#635E63", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={fmtNum} width={54} />
+              <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(212,167,61,0.06)" }} />
+              <Bar dataKey="buys" name="Buy Txns" fill="#3FBF6F" radius={[1, 1, 0, 0]} />
+              <Bar dataKey="sells" name="Sell Txns" fill="#C41E3A" radius={[1, 1, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+          <div className="legend-row">
+            <div className="legend-item"><span className="legend-dot" style={{ background: "#3FBF6F" }} />Buy transactions</div>
+            <div className="legend-item"><span className="legend-dot" style={{ background: "#C41E3A" }} />Sell transactions</div>
+          </div>
+        </Panel>
+
+        <Panel eyebrow="LP Tracking" tag="live" title="Liquidity by DEX">
+          {lpByDex.length ? (
+            <>
+              <ResponsiveContainer width="100%" height={220}>
+                <PieChart>
+                  <Pie data={lpByDex} dataKey="value" nameKey="name" innerRadius={55} outerRadius={85} paddingAngle={2}>
+                    {lpByDex.map((d, i) => <Cell key={i} fill={d.color} stroke="#131215" strokeWidth={2} />)}
+                  </Pie>
+                  <Tooltip content={<CustomTooltip unit="$" />} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="legend-row">
+                {lpByDex.map((d) => (
+                  <div className="legend-item" key={d.name}>
+                    <span className="legend-dot" style={{ background: d.color }} />
+                    {d.name} · {fmt(d.value)}
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="empty-state">Waiting for live pool data…</div>
+          )}
+        </Panel>
+      </div>
+
+      <div className="grid-2">
+        <Panel eyebrow="LP Tracking" tag="live" title="Liquidity — Session History">
+          {liqHistory.length > 1 ? (
+            <ResponsiveContainer width="100%" height={190}>
+              <AreaChart data={liqHistory}>
+                <defs>
+                  <linearGradient id="lpGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#D4A73D" stopOpacity={0.35} />
+                    <stop offset="100%" stopColor="#D4A73D" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke="#2A2226" vertical={false} />
+                <XAxis dataKey="t" tick={{ fill: "#635E63", fontSize: 10 }} axisLine={{ stroke: "#2A2226" }} tickLine={false} />
+                <YAxis tick={{ fill: "#635E63", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={fmt} width={54} />
+                <Tooltip content={<CustomTooltip unit="$" />} />
+                <Area type="monotone" dataKey="liquidity" name="Liquidity" stroke="#D4A73D" strokeWidth={2} fill="url(#lpGrad)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="empty-state">Building history from live polls — check back shortly. This chart only plots real data collected while the page stays open, no backfilled points.</div>
+          )}
+        </Panel>
+
+        <Panel eyebrow="Volume Analysis" tag="live" title="24h Volume — Session History">
+          {volHistory.length > 1 ? (
+            <ResponsiveContainer width="100%" height={190}>
+              <LineChart data={volHistory}>
+                <CartesianGrid stroke="#2A2226" vertical={false} />
+                <XAxis dataKey="t" tick={{ fill: "#635E63", fontSize: 10 }} axisLine={{ stroke: "#2A2226" }} tickLine={false} />
+                <YAxis tick={{ fill: "#635E63", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={fmt} width={54} />
+                <Tooltip content={<CustomTooltip unit="$" />} />
+                <Line type="monotone" dataKey="volume" name="24h Volume" stroke="#C41E3A" strokeWidth={2} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="empty-state">Building history from live polls — check back shortly.</div>
+          )}
+        </Panel>
+      </div>
+
+      <div className="grid-2">
+        <Panel eyebrow="LP Tracking" tag="live" title="Pools">
+          {pairs.length ? (
+            <table className="pair-table">
+              <thead>
+                <tr><th>DEX</th><th>Price</th><th>Liquidity</th><th>Vol 24h</th></tr>
+              </thead>
+              <tbody>
+                {pairs.slice(0, 6).map((p, i) => (
+                  <tr key={i}>
+                    <td className="dex-name">{p.dexId}</td>
+                    <td>${parseFloat(p.priceUsd).toFixed(p.priceUsd < 1 ? 6 : 4)}</td>
+                    <td>{fmt(p.liquidity?.usd)}</td>
+                    <td>{fmt(p.volume?.h24)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div className="empty-state">Waiting for live pool data…</div>
+          )}
+        </Panel>
+
+        <Panel eyebrow="Risk" tag="mock" title="Holder Concentration">
+          {holderBands.map((b) => (
+            <div className="band-row" key={b.band}>
+              <div className="band-name">{b.band}</div>
+              <div className="band-bar-wrap">
+                <div
+                  className="band-bar"
+                  style={{
+                    width: `${b.pct}%`,
+                    background: b.risk === "high" ? "#C41E3A" : b.risk === "med" ? "#D4A73D" : "#3FBF6F",
+                  }}
+                />
+              </div>
+              <div className="band-pct">{b.pct}%</div>
+            </div>
+          ))}
+        </Panel>
+      </div>
+
+      <div className="grid-2">
+        <Panel eyebrow="LP Tracking" tag="mock" title="Whale Watch">
+          {whaleWatch.map((w, i) => (
+            <div className="whale-row" key={i}>
+              <div>
+                <div className="whale-wallet">{w.wallet}</div>
+                <span className="whale-time">{w.time}</span>
+              </div>
+              <div className="whale-action">{w.action}</div>
+              <div style={{ textAlign: "right" }}>
+                <div className={`whale-amount ${w.dir}`}>{w.amount}</div>
+                <span className="whale-time">{w.value}</span>
+              </div>
+            </div>
+          ))}
+        </Panel>
+
+        <Panel eyebrow="Community" tag="mock" title="Social Pulse">
+          <div className="social-grid">
+            {socialFeed.map((s, i) => (
+              <div className="social-card" key={i}>
+                <div className="social-platform">{s.platform}</div>
+                <div className="social-metric">{s.metric}</div>
+                <div className="social-value">{s.value}</div>
+                <div className="social-change">{s.change}</div>
+              </div>
+            ))}
+          </div>
+        </Panel>
+      </div>
+
+      <div className="footer-note">
+        <Target size={13} style={{ flexShrink: 0, marginTop: 2 }} />
+        <div>
+          <b>Live via DexScreener:</b> price, market cap, FDV, liquidity by DEX, volume, and buy/sell transaction counts — polled every {POLL_MS / 1000}s from contract {TOKEN_ADDRESS}.<br />
+          <b>Still mock:</b> holder concentration, whale watch, and social pulse — these need a separate data source (e.g. Solscan/Birdeye for holders, a social listening tool for sentiment) to go live.
+        </div>
+      </div>
+
+      <div className="built-by">
+        Built by <b>Topklass</b>
+      </div>
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<AnsemDashboard />);
+</script>
+</body>
+</html>
