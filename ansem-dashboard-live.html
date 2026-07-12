@@ -469,8 +469,17 @@ function AnsemDashboard() {
       const res = await fetch(DEXSCREENER_URL);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      const solPairs = (data.pairs || []).filter((p) => p.chainId === "solana");
-      if (!solPairs.length) throw new Error("No pairs returned");
+      const solPairsRaw = (data.pairs || []).filter((p) => p.chainId === "solana");
+      if (!solPairsRaw.length) throw new Error("No pairs returned");
+
+      // De-dupe: DexScreener can return the same pool more than once in a response.
+      const seen = new Set();
+      const solPairs = solPairsRaw.filter((p) => {
+        const key = p.pairAddress || `${p.dexId}-${p.baseToken?.address}-${p.quoteToken?.address}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
 
       setPairs(solPairs);
       setStatus("ok");
@@ -626,8 +635,8 @@ function AnsemDashboard() {
                 </PieChart>
               </ResponsiveContainer>
               <div className="legend-row">
-                {lpByDex.map((d) => (
-                  <div className="legend-item" key={d.name}>
+                {lpByDex.map((d, i) => (
+                  <div className="legend-item" key={`${d.name}-${i}`}>
                     <span className="legend-dot" style={{ background: d.color }} />
                     {d.name} · {fmt(d.value)}
                   </div>
